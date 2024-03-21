@@ -103,6 +103,7 @@ MS_Usage()
     echo "    --lsm file         : LSM file describing the package"
     echo "    --license file     : Append a license file"
     echo "    --help-header file : Add a header to the archive's --help output"
+    echo "    --preextract file  : Add a script to run a script before extracting"
     echo "    --packaging-date date"
     echo "                       : Use provided string as the packaging date"
     echo "                         instead of the current date."
@@ -366,6 +367,10 @@ do
     shift 2 || { MS_Usage; exit 1; }
 	[ -n "$HELPHEADER" ] && HELPHEADER="$HELPHEADER
 "
+    ;;
+    --preextract)
+    PREEXTRACT=`sed -e 's/[\$*?(){}[\]|<>;&]/\\&/g; s/\\\\/\\\\\\\\\\\\/g; s/\\$/\\\\$/g; s/"/\\\\"/g' $2`
+    shift 2 || { MS_Usage; exit 1; }
     ;;
     --tar-quietly)
 	TAR_QUIETLY=y
