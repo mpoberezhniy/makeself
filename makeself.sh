@@ -369,7 +369,7 @@ do
 "
     ;;
     --preextract)
-    PREEXTRACT=`sed -e 's/[\$*?(){}[\]|<>;&]/\\&/g; s/\\\\/\\\\\\\\\\\\/g; s/\\$/\\\\$/g; s/"/\\\\"/g' $2`
+    PREEXTRACT_FILE="$2"
     shift 2 || { MS_Usage; exit 1; }
     ;;
     --tar-quietly)

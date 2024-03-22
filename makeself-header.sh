@@ -24,7 +24,12 @@ scriptargs="$SCRIPTARGS"
 cleanup_script="${CLEANUP_SCRIPT}"
 licensetxt="$LICENSE"
 helpheader="${HELPHEADER}"
-preextract="${PREEXTRACT}"
+preextract='
+EOF
+sed -e "s/['\\]/\\\\&/g" "${PREEXTRACT_FILE}" >> "$archname"
+cat << EOF  >> "$archname"
+'
+preextract="\${preextract#?}"; preextract="\${preextract%?}"  # remove newlines added by header
 targetdir="$archdirname"
 filesizes="$filesizes"
 totalsize="$totalsize"
