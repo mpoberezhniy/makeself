@@ -93,6 +93,7 @@ MS_Usage()
     echo "    --nocrc            : Don't calculate a CRC for archive"
     echo "    --sha256           : Compute a SHA256 checksum for the archive"
     echo "    --header file      : Specify location of the header script"
+    echo "    --preextract file  : Specify a pre-extraction script"
     echo "    --cleanup file     : Specify a cleanup script that executes on interrupt and when finished successfully."
     echo "    --follow           : Follow the symlinks in the archive"
     echo "    --noprogress       : Do not show the progress during the decompression"
@@ -103,7 +104,6 @@ MS_Usage()
     echo "    --lsm file         : LSM file describing the package"
     echo "    --license file     : Append a license file"
     echo "    --help-header file : Add a header to the archive's --help output"
-    echo "    --preextract file  : Add a script to run a script before extracting"
     echo "    --packaging-date date"
     echo "                       : Use provided string as the packaging date"
     echo "                         instead of the current date."
@@ -312,6 +312,11 @@ do
 	HEADER="$2"
     shift 2 || { MS_Usage; exit 1; }
 	;;
+    --preextract)
+    PREEXTRACT_FILE="$2"
+    shift 2 || { MS_Usage; exit 1; }
+    test -r "$PREEXTRACT_FILE" || { echo "Unable to open pre-extraction script: $PREEXTRACT_FILE" >&2; exit 1; }
+    ;;
     --cleanup)
     CLEANUP_SCRIPT="$2"
     shift 2 || { MS_Usage; exit 1; }
@@ -367,10 +372,6 @@ do
     shift 2 || { MS_Usage; exit 1; }
 	[ -n "$HELPHEADER" ] && HELPHEADER="$HELPHEADER
 "
-    ;;
-    --preextract)
-    PREEXTRACT_FILE="$2"
-    shift 2 || { MS_Usage; exit 1; }
     ;;
     --tar-quietly)
 	TAR_QUIETLY=y

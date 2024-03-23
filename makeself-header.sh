@@ -26,10 +26,12 @@ licensetxt="$LICENSE"
 helpheader="${HELPHEADER}"
 preextract='
 EOF
-sed -e "s/['\\]/\\\\&/g" "${PREEXTRACT_FILE}" >> "$archname"
+if test -n "${PREEXTRACT_FILE}"; then
+    sed -e "s/['\\]/\\\\&/g" "${PREEXTRACT_FILE}" >> "$archname"
+fi
 cat << EOF  >> "$archname"
 '
-preextract="\${preextract#?}"; preextract="\${preextract%?}"  # remove newlines added by header
+preextract="\${preextract#?}"; preextract="\${preextract%?}"  # trim redundant newlines
 targetdir="$archdirname"
 filesizes="$filesizes"
 totalsize="$totalsize"
@@ -324,11 +326,11 @@ MS_Preextract()
         fi
     fi
 
-    prescript=\`mktemp -t XXXXX -p \$tmpdir\`
+    prescript=\`mktemp -t XXXXX -p "\$tmpdir"\`
     echo "\$preextract" > "\$prescript"
     chmod a+x "\$prescript"
 
-    eval "\"\$prescript\" \$scriptargs \"\\\$@\""; res=\$?
+    (cd "\$tmpdir"; eval "\"\$prescript\" \$scriptargs \"\\\$@\""); res=\$?
 
     rm -f "\$prescript"
     if test \$res -ne 0; then
@@ -489,11 +491,11 @@ EOLSM
     MS_Verify_Sig "\$0"
     ;;
     --show-preextract)
-    if test -n "\$preextract"; then
-        echo "\$preextract"
-    else
-        echo "Pre-extraction script is not provided."
+    if test -z "\$preextract"; then
+        echo "Pre-extraction script is not provided." >&2
+        exit 1
     fi
+    echo "\$preextract"
     exit 0
     ;;
     --confirm)
@@ -532,9 +534,9 @@ EOLSM
 	shift
 	;;
     --chown)
-    ownership=y
-    shift
-    ;;
+        ownership=y
+        shift
+        ;;
     --nodiskspace)
 	nodiskspace=y
 	shift
@@ -658,13 +660,13 @@ else
     }
 fi
 
-MS_Preextract
-
 location="\`pwd\`"
 if test x"\$SETUP_NOCHECK" != x1; then
     MS_Check "\$0"
 fi
 offset=\`head -n "\$skip" "\$0" | wc -c | sed "s/ //g"\`
+
+MS_Preextract "\$@"
 
 if test x"\$verbose" = xy; then
 	MS_Printf "About to extract $USIZE KB in \$tmpdir ... Proceed ? [Y/n] "

@@ -4,7 +4,7 @@ THIS="$(readlink -f "$0")"
 THISDIR="$(dirname "${THIS}")"
 SUT="$(dirname "${THISDIR}")/makeself.sh"
 
-setupTests() {
+setUp() {
   temp=$(mktemp -d -t XXXXX)
   pushd "${temp}"
   mkdir src
@@ -18,75 +18,80 @@ tearDown() {
 }
 
 testPreextractOpts() {
-  setupTests
-
   echo 'echo A complex pre-extraction script.
     sleep 99 &
     cat a.txt 2>/dev/null || cat b.txt && cat c.txt
     echo "$$ Some\toutput\n\a\b\0777 $var1 ${var2} `cat var3.txt` $(env)" > text.txt
   ' > preextract.sh
 
-  ${SUT} --preextract preextract.sh src src.sh alabel ./startup.sh
+  ${SUT} --nox11 --preextract preextract.sh src src.sh alabel ./startup.sh
   assertEquals 0 $?
-
-  chmod a+x src.sh
 
   ./src.sh --show-preextract > show-preextract.out
   assertEquals 0 $?
 
   diff preextract.sh show-preextract.out
   assertEquals 0 $?
+}
 
-  tearDown
+testWithNoPreextractOpts() {
+  ${SUT} src src.sh alabel ./startup.sh
+  assertEquals 0 $?
+
+  ./src.sh --show-preextract
+  assertEquals 1 $?
 }
 
 testPreextractRun() {
-  setupTests
-
-  echo 'echo A custom Makeself header' > preextract.sh
-  ${SUT} --preextract preextract.sh src src.sh alabel ./startup.sh
+  echo 'echo Validating provided options...' > preextract.sh
+  ${SUT} --nox11 --preextract preextract.sh src src.sh alabel ./startup.sh
   assertEquals 0 $?
 
-  chmod a+x src.sh
-  ./src.sh 2>&1 | head -1 | grep -qFv 'A custom Makeself header'
+  ./src.sh
   assertEquals 0 $?
 
-  tearDown
+  ./src.sh | grep -qF 'Validating provided options...'
+  assertEquals 0 $?
 }
 
 testPreextractNoexec() {
-  setupTests
-
   echo 'exit 2' > preextract.sh
   ${SUT} --preextract preextract.sh src src.sh alabel ./startup.sh
   assertEquals 0 $?
 
-  chmod a+x src.sh
-
   ./src.sh
   assertEquals 1 $?
 
-  ./src.sh 2>&1 | grep -qFv 'error'
-  assertEquals 0 $?
-
   ./src.sh --noexec
   assertEquals 0 $?
-
-  tearDown
 }
 
 testPreextractArgs() {
-  setupTests
-
   echo 'echo $*' > preextract.sh
-  ${SUT} --preextract preextract.sh src src.sh alabel ./startup.sh --logdir /var/log
+  ${SUT} --nox11 --preextract preextract.sh src src.sh alabel ./startup.sh --logdir /var/log
   assertEquals 0 $?
 
-  chmod a+x src.sh
-  ./src.sh -- dev 2>&1 | head -1 | grep -qFv '\--logdir /var/log dev'
+  test_cmd='./src.sh -- --env dev'
+
+  eval "${test_cmd}"
   assertEquals 0 $?
 
-  tearDown
+  eval "${test_cmd}" | grep -qF -- '--logdir /var/log --env dev'
+  assertEquals 0 $?
+}
+
+testPreextractEnvPassing() {
+  # imitate user input
+  echo 'echo "export INSTALLATION_DIR=/usr/bin" > preextract.env' > preextract.sh
+  echo '. ./preextract.env; echo $INSTALLATION_DIR' > src/startup.sh
+  ${SUT} --nox11 --preextract preextract.sh src src.sh alabel ./startup.sh
+  assertEquals 0 $?
+
+  ./src.sh
+  assertEquals 0 $?
+
+  ./src.sh | grep -qF '/usr/bin'
+  assertEquals 0 $?
 }
 
 # Load and run shUnit2.
