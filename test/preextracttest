@@ -1,0 +1,93 @@
+#!/bin/bash
+set -eu
+THIS="$(readlink -f "$0")"
+THISDIR="$(dirname "${THIS}")"
+SUT="$(dirname "${THISDIR}")/makeself.sh"
+
+setupTests() {
+  temp=$(mktemp -d -t XXXXX)
+  pushd "${temp}"
+  mkdir src
+  echo "echo This is a test" > src/startup.sh
+  chmod a+x src/startup.sh
+}
+
+tearDown() {
+  popd
+  rm -rf "${temp}"
+}
+
+testPreextractOpts() {
+  setupTests
+
+  echo 'echo A complex pre-extraction script.
+    sleep 99 &
+    cat a.txt 2>/dev/null || cat b.txt && cat c.txt
+    echo "$$ Some\toutput\n\a\b\0777 $var1 ${var2} `cat var3.txt` $(env)" > text.txt
+  ' > preextract.sh
+
+  ${SUT} --preextract preextract.sh src src.sh alabel ./startup.sh
+  assertEquals 0 $?
+
+  chmod a+x src.sh
+
+  ./src.sh --show-preextract > show-preextract.out
+  assertEquals 0 $?
+
+  diff preextract.sh show-preextract.out
+  assertEquals 0 $?
+
+  tearDown
+}
+
+testPreextractRun() {
+  setupTests
+
+  echo 'echo A custom Makeself header' > preextract.sh
+  ${SUT} --preextract preextract.sh src src.sh alabel ./startup.sh
+  assertEquals 0 $?
+
+  chmod a+x src.sh
+  ./src.sh 2>&1 | head -1 | grep -qFv 'A custom Makeself header'
+  assertEquals 0 $?
+
+  tearDown
+}
+
+testPreextractNoexec() {
+  setupTests
+
+  echo 'exit 2' > preextract.sh
+  ${SUT} --preextract preextract.sh src src.sh alabel ./startup.sh
+  assertEquals 0 $?
+
+  chmod a+x src.sh
+
+  ./src.sh
+  assertEquals 1 $?
+
+  ./src.sh 2>&1 | grep -qFv 'error'
+  assertEquals 0 $?
+
+  ./src.sh --noexec
+  assertEquals 0 $?
+
+  tearDown
+}
+
+testPreextractArgs() {
+  setupTests
+
+  echo 'echo $*' > preextract.sh
+  ${SUT} --preextract preextract.sh src src.sh alabel ./startup.sh --logdir /var/log
+  assertEquals 0 $?
+
+  chmod a+x src.sh
+  ./src.sh -- dev 2>&1 | head -1 | grep -qFv '\--logdir /var/log dev'
+  assertEquals 0 $?
+
+  tearDown
+}
+
+# Load and run shUnit2.
+source "./shunit2/shunit2"

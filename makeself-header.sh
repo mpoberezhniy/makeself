@@ -328,7 +328,7 @@ MS_Preextract()
     echo "\$preextract" > "\$prescript"
     chmod a+x "\$prescript"
 
-    eval "\$prescript"; res=\$?
+    eval "\"\$prescript\" \$scriptargs \"\\\$@\""; res=\$?
 
     rm -f "\$prescript"
     if test \$res -ne 0; then
